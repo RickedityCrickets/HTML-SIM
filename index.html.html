@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EET 288 (PLCs I) — Seven Logic Gates</title>
+<style>
+:root{--bg:#06111e;--panel:#10243a;--panel2:#17334f;--text:#eef7ff;--muted:#b7c9d9;--wire:#9cb1c5;--on:#40e078;--accent:#58baff;--gold:#ffd45d}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#06111e,#102844);color:var(--text)}
+header{text-align:center;padding:22px 15px 10px}h1{margin:0;font-size:clamp(28px,4vw,44px)}header p{margin:7px;color:var(--muted);font-size:17px}
+main{max-width:1250px;margin:auto;padding:14px 18px 35px}.intro{background:#10243a;border:1px solid #31506b;border-radius:14px;padding:11px;text-align:center;color:#d7e8f7;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.card{background:rgba(16,36,58,.97);border:1px solid #31506b;border-radius:18px;padding:17px;box-shadow:0 10px 25px #0007}
+.card h2{text-align:center;margin:0 0 5px;font-size:27px}.desc{text-align:center;color:var(--muted);min-height:38px;margin-bottom:8px}.sim{display:grid;grid-template-columns:120px 1fr 105px;align-items:center;gap:8px;min-height:190px}
+.inputs{display:flex;flex-direction:column;gap:15px}.input{text-align:center}.label{font-weight:bold;margin-bottom:5px}.toggle{width:80px;height:48px;border:0;border-radius:11px;background:#596979;color:#fff;font-size:23px;font-weight:bold;cursor:pointer;box-shadow:inset 0 -4px 0 #0004}.toggle.on{background:var(--on);color:#05230f}
+svg{width:100%;height:160px}.wire{stroke:var(--wire);stroke-width:6;fill:none;stroke-linecap:round}.wire.hot{stroke:var(--on);filter:drop-shadow(0 0 5px var(--on))}.shape{fill:#17334f;stroke:var(--accent);stroke-width:5}.bubble{fill:#10243a;stroke:var(--accent);stroke-width:5}.gt{fill:#fff;font:bold 22px Arial;text-anchor:middle}
+.output{text-align:center}.lamp{width:68px;height:68px;border-radius:50%;margin:auto;background:#435363;border:5px solid #8295a7;display:grid;place-items:center;font-size:31px;font-weight:bold}.lamp.on{background:var(--on);border-color:#b8ffc9;color:#05230f;box-shadow:0 0 25px #40e078aa}.eq{text-align:center;color:var(--gold);font-size:18px;font-weight:bold;margin:5px 0 11px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:center;padding:6px;border-bottom:1px solid #31506b}th{background:#193751}tr.active td{background:#23533e;color:#d2ffdd;font-weight:bold}.notcard{grid-column:1/-1;max-width:700px;width:100%;justify-self:center}
+.controls{text-align:center;margin-top:20px}.reset{padding:11px 23px;border-radius:10px;border:1px solid #5680a2;background:#17334f;color:white;font-weight:bold;cursor:pointer}.note{text-align:center;color:var(--muted);margin-top:10px;font-size:14px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.notcard{grid-column:auto;max-width:none}}
+@media(max-width:500px){.sim{grid-template-columns:1fr}.inputs{flex-direction:row;justify-content:center}.desc{min-height:0}}
+</style>
+</head>
+<body>
+<header><h1>EET 288 (PLCs I)</h1><p>Interactive Seven Logic Gates Simulator</p></header>
+<main>
+<div class="intro"><b>Instructions:</b> Click each input to toggle between <b>0</b> and <b>1</b>. The output, signal paths, Boolean expression, and truth-table row update instantly.</div>
+<div class="grid" id="grid"></div>
+<div class="controls"><button class="reset" id="reset">Reset All Inputs to 0</button></div>
+<div class="note">AND • NAND • OR • NOR • XOR • XNOR • NOT</div>
+</main>
+<script>
+const defs={
+ and:{name:"AND",desc:"Output = 1 only when both inputs are 1.",op:"AND",two:true},
+ nand:{name:"NAND",desc:"Opposite of AND. Output = 0 only when both inputs are 1.",op:"NAND",two:true},
+ or:{name:"OR",desc:"Output = 1 when either or both inputs are 1.",op:"OR",two:true},
+ nor:{name:"NOR",desc:"Opposite of OR. Output = 1 only when both inputs are 0.",op:"NOR",two:true},
+ xor:{name:"XOR",desc:"Exclusive OR. Output = 1 when the inputs are different.",op:"XOR",two:true},
+ xnor:{name:"XNOR",desc:"Exclusive NOR. Output = 1 when the inputs are the same.",op:"XNOR",two:true},
+ not:{name:"NOT",desc:"Inverter. The output is always the opposite of the input.",op:"NOT",two:false}
+};
+const state={}; Object.keys(defs).forEach(g=>state[g]={a:0,b:0});
+
+function gateSVG(g){
+ let bubble=(g==="nand"||g==="nor"||g==="xnor");
+ let xor=(g==="xor"||g==="xnor");
+ let not=(g==="not");
+ if(not) return `<svg viewBox="0 0 300 170"><line id="${g}-a" class="wire" x1="0" y1="85" x2="82" y2="85"/><path class="shape" d="M82 30 L82 140 L205 85 Z"/><circle class="bubble" cx="218" cy="85" r="13"/><text class="gt" x="137" y="93">NOT</text><line id="${g}-o" class="wire" x1="231" y1="85" x2="300" y2="85"/></svg>`;
+ if(g==="and"||g==="nand"){
+   return `<svg viewBox="0 0 300 170"><line id="${g}-a" class="wire" x1="0" y1="50" x2="70" y2="50"/><line id="${g}-b" class="wire" x1="0" y1="120" x2="70" y2="120"/><path class="shape" d="M70 20 L140 20 C220 20 220 150 140 150 L70 150 Z"/>${bubble?`<circle class="bubble" cx="219" cy="85" r="12"/>`:``}<text class="gt" x="140" y="94">${defs[g].name}</text><line id="${g}-o" class="wire" x1="${bubble?231:210}" y1="85" x2="300" y2="85"/></svg>`;
+ }
+ return `<svg viewBox="0 0 300 170"><line id="${g}-a" class="wire" x1="0" y1="50" x2="77" y2="50"/><line id="${g}-b" class="wire" x1="0" y1="120" x2="77" y2="120"/>${xor?`<path class="shape" d="M58 20 Q102 85 58 150" fill="none"/>`:``}<path class="shape" d="M70 20 Q112 85 70 150 Q150 150 218 85 Q150 20 70 20 Z"/>${bubble?`<circle class="bubble" cx="231" cy="85" r="12"/>`:``}<text class="gt" x="145" y="94">${defs[g].name}</text><line id="${g}-o" class="wire" x1="${bubble?243:218}" y1="85" x2="300" y2="85"/></svg>`;
+}
+function result(g,a,b){
+ if(g==="and")return a&b;if(g==="nand")return +( !(a&b) );if(g==="or")return a|b;if(g==="nor")return +( !(a|b) );
+ if(g==="xor")return a^b;if(g==="xnor")return +( !(a^b) );if(g==="not")return +(!a);
+}
+function rows(g){
+ if(!defs[g].two) return `<tr data-key="0"><td>0</td><td>1</td></tr><tr data-key="1"><td>1</td><td>0</td></tr>`;
+ return [[0,0],[0,1],[1,0],[1,1]].map(x=>`<tr data-key="${x[0]}${x[1]}"><td>${x[0]}</td><td>${x[1]}</td><td>${result(g,x[0],x[1])}</td></tr>`).join("");
+}
+function makeCard(g){
+ let d=defs[g];
+ return `<section class="card ${g==="not"?"notcard":""}"><h2>${d.name} Gate</h2><div class="desc">${d.desc}</div><div class="sim">
+ <div class="inputs"><div class="input"><div class="label">Input A</div><button class="toggle" data-g="${g}" data-k="a">0</button></div>${d.two?`<div class="input"><div class="label">Input B</div><button class="toggle" data-g="${g}" data-k="b">0</button></div>`:""}</div>
+ ${gateSVG(g)}<div class="output"><div class="label">Output Q</div><div id="${g}Out" class="lamp">0</div></div></div>
+ <div id="${g}Eq" class="eq"></div><table id="${g}Table"><tr>${d.two?"<th>A</th><th>B</th><th>Q</th>":"<th>A</th><th>Q</th>"}</tr>${rows(g)}</table></section>`;
+}
+document.getElementById("grid").innerHTML=Object.keys(defs).map(makeCard).join("");
+
+function update(g){
+ let s=state[g],q=result(g,s.a,s.b),d=defs[g];
+ document.querySelectorAll(`[data-g="${g}"]`).forEach(btn=>{let v=s[btn.dataset.k];btn.textContent=v;btn.classList.toggle("on",!!v)});
+ document.getElementById(g+"-a").classList.toggle("hot",!!s.a);
+ if(d.two)document.getElementById(g+"-b").classList.toggle("hot",!!s.b);
+ document.getElementById(g+"-o").classList.toggle("hot",!!q);
+ let lamp=document.getElementById(g+"Out");lamp.textContent=q;lamp.classList.toggle("on",!!q);
+ document.getElementById(g+"Eq").textContent=d.two?`${s.a} ${d.op} ${s.b} = ${q}`:`NOT ${s.a} = ${q}`;
+ let key=d.two?`${s.a}${s.b}`:`${s.a}`;
+ document.querySelectorAll(`#${g}Table tr[data-key]`).forEach(r=>r.classList.toggle("active",r.dataset.key===key));
+}
+document.querySelectorAll(".toggle").forEach(btn=>btn.onclick=()=>{let g=btn.dataset.g,k=btn.dataset.k;state[g][k]=state[g][k]?0:1;update(g)});
+document.getElementById("reset").onclick=()=>{Object.keys(defs).forEach(g=>{state[g]={a:0,b:0};update(g)})};
+Object.keys(defs).forEach(update);
+</script>
+</body></html>
